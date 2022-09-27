@@ -1,46 +1,25 @@
-#include <ESP8266WiFi.h>                                // Подключаем библиотеку ESP8266WiFi
-#include <Wire.h>                                       // Подключаем библиотеку Wire
-#include <Adafruit_BMP280.h>                            // Подключаем библиотеку Adafruit_bmp280
+#include <ESP8266WiFi.h>
+#include <Wire.h>
+#include <Adafruit_BMP280.h>
 
-Adafruit_BMP280 bmp;                                    // Установка связи по интерфейсу I2C
-const char* ssid = "anet";          // Название Вашей WiFi сети
-const char* password = "myoldkey66";     // Пароль от Вашей WiFi сети
-WiFiServer server(80);                                  // Указываем порт Web-сервера
+#define pressAdd 650 //добавление к значению давления
+#define getDataInt 10000 //интервал опроса датчиков
+#define writeDataInt 1800000 //10000 - 10 sec 1800000 - 30min
+#define fwVersion "v. 0.0.0.1"
+
+Adafruit_BMP280 bmp;               // Установка связи по интерфейсу I2C
+const char* ssid = "anet";          // Название WiFi сети
+const char* password = "myoldkey66";     // Пароль от  WiFi сети
+WiFiServer server(80);                   // порт Web-сервера
 String header;
 
-void makeWeb(){
-  
-}
+unsigned long getDataTime; // переменная таймера для опроса датчика
+unsigned long writeDataTime; // переменная таймера для записи таймера
+byte tempData[16] = {0}; //журнал температуры
+byte pressData[16] = {0}; //журнал давления
 
-void getMeteo(){
-  
-}
-
-void setup() {
-  Serial.begin(115200);                                 // Скорость передачи 115200
-  bool status;
-  if (!bmp.begin(0x76)) {                               // Проверка инициализации датчика
-    Serial.println("Could not find a valid bmp280 sensor, check wiring!"); // Печать, об ошибки инициализации.
-    while (1);                                          // Зацикливаем
-  }
-
-  Serial.print("Connecting to ");                       // Отправка в Serial port
-  Serial.println(ssid);                                 // Отправка в Serial port
-  WiFi.begin(ssid, password);                           // Подключение к WiFi Сети
-  while (WiFi.status() != WL_CONNECTED) {               // Проверка подключения к WiFi сети
-    delay(500);                                         // Пауза
-    Serial.print(".");                                  // Отправка в Serial port
-  }
-  Serial.println("");                                   // Отправка в Serial port
-  Serial.println("WiFi connected.");                    // Отправка в Serial port
-  Serial.println("IP address: ");                       // Отправка в Serial port
-  Serial.println(WiFi.localIP());                       // Отправка в Serial port
-  server.begin();
-}
-
-void loop() {
+void makeWeb() {
   WiFiClient client = server.available();               // Получаем данные, посылаемые клиентом
-
   if (client) {
     Serial.println("New Client.");                      // Отправка "Новый клиент"
     String currentLine = "";                            // Создаем строку для хранения входящих данных от клиента
@@ -72,11 +51,44 @@ void loop() {
             client.println("</style></head><body><h1>Метеостанция на bmp280 и ESP8266</h1>");
             client.println("<table><tr><th>Параметр</th><th>Показания</th></tr>");
             client.println("<tr><td>Температура</td><td><span class=\"sensor\">");
-            client.println(round(bmp.readTemperature()), 0);
+            client.println(tempData[15]);
             client.println(" *C</span></td></tr>");
             client.println("<tr><td>Давление</td><td><span class=\"sensor\">");
-            client.println(round((bmp.readPressure() / 100.0F ) * 0.75), 0);
+            client.println(pressData[15] + pressAdd);
             client.println(" mm.Hg.</span></td></tr>");
+
+            client.println("<tr><td>Статистика температуры</td></tr>");
+
+            client.println("<tr>");
+            for (byte i = 0; i < 16; i++) {
+              client.println("<td><span class=\"sensor\">");
+              if (tempData[i] != 0) {
+                client.println(tempData[i]);
+                client.println(" *C</span></td>");
+              }
+              else {
+                client.println("N\A");
+                client.println("</span></td>");
+              }
+            }
+            client.println("</tr>");
+
+            client.println("<tr><td>Статистика давления</td></tr>");
+
+            client.println("<tr>");
+            for (byte i = 0; i < 16; i++) {
+              client.println("<td><span class=\"sensor\">");
+              if (pressData[i] != 0) {
+                client.println(pressData[i] + pressAdd);
+                client.println(" mm.Hg.</span></td>");
+              }
+              else {
+                client.println("N\A");
+                client.println("</span></td>");
+              }
+            }
+
+            client.println("</tr>");
             client.println("</body></html>");
             client.println();
             break;
@@ -93,4 +105,57 @@ void loop() {
     Serial.println("Client disconnected.");
     Serial.println("");
   }
+}
+
+void getMeteoData() {
+
+  if ((millis() - writeDataTime > writeDataInt)||tempData[15]==0) {
+    writeDataTime = millis();
+    for (byte i = 0; i < 16; i++) {
+      if (i != 15) {
+        tempData[i] = tempData[i + 1];
+        pressData[i] = pressData[i + 1];
+      }
+      if (i == 15) {
+        tempData[15] = round(bmp.readTemperature());
+        pressData[15] =  round((bmp.readPressure() / 100.0F ) * 0.75) - pressAdd;
+      }
+    }
+  }
+
+
+}
+
+void setup() {
+  Serial.begin(115200);                                 // Скорость передачи 115200
+  bool status;
+  if (!bmp.begin(0x76)) {                               // Проверка инициализации датчика
+    Serial.println("Could not find a valid bmp280 sensor, check wiring!"); // Печать, об ошибки инициализации.
+    while (1);                                          // Зацикливаем
+  }
+
+  Serial.print("Connecting to ");                       // Отправка в Serial port
+  Serial.println(ssid);                                 // Отправка в Serial port
+  WiFi.begin(ssid, password);                           // Подключение к WiFi Сети
+  while (WiFi.status() != WL_CONNECTED) {               // Проверка подключения к WiFi сети
+    delay(500);                                         // Пауза
+    Serial.print(".");                                  // Отправка в Serial port
+  }
+  Serial.println("");                                   // Отправка в Serial port
+  Serial.println("WiFi connected.");                    // Отправка в Serial port
+  Serial.println("IP address: ");                       // Отправка в Serial port
+  Serial.println(WiFi.localIP());                       // Отправка в Serial port
+  server.begin();
+
+  getDataTime = millis();
+  writeDataTime = millis();
+}
+
+void loop() {
+  if (millis() - getDataTime > getDataInt) {
+    getDataTime = millis();
+    getMeteoData();
+  }
+
+  makeWeb();
 }
