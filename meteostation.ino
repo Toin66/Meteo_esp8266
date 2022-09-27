@@ -51,10 +51,10 @@ void makeWeb() {
             client.println("</style></head><body><h1>Метеостанция на bmp280 и ESP8266</h1>");
             client.println("<table><tr><th>Параметр</th><th>Показания</th></tr>");
             client.println("<tr><td>Температура</td><td><span class=\"sensor\">");
-            client.println(tempData[15]);
+            client.println(round(bmp.readTemperature()));
             client.println(" *C</span></td></tr>");
             client.println("<tr><td>Давление</td><td><span class=\"sensor\">");
-            client.println(pressData[15] + pressAdd);
+            client.println(round((bmp.readPressure() / 100.0F ) * 0.75));
             client.println(" mm.Hg.</span></td></tr>");
 
             client.println("<tr><td>Статистика температуры</td></tr>");
@@ -109,7 +109,7 @@ void makeWeb() {
 
 void getMeteoData() {
 
-  if ((millis() - writeDataTime > writeDataInt)||tempData[15]==0) {
+  if ((millis() - writeDataTime > writeDataInt) || tempData[15] == 0) {
     writeDataTime = millis();
     for (byte i = 0; i < 16; i++) {
       if (i != 15) {
