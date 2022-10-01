@@ -24,10 +24,10 @@ void makeWeb() {
   byte minPressVal =  pressData[23];
   byte maxPressVal =  pressData[23];
   for (byte i = 0; i < 24; i++) {
-    if (minTempVal < tempData[i]) minTempVal = tempData[i];
-    if (maxTempVal > tempData[i]) maxTempVal = tempData[i];
-    if (minPressVal < pressData[i]) minPressVal = pressData[i];
-    if (maxPressVal > pressData[i]) maxPressVal = pressData[i];
+    if (minTempVal > tempData[i]) minTempVal = tempData[i];
+    if (maxTempVal < tempData[i]) maxTempVal = tempData[i];
+    if (minPressVal > pressData[i]) minPressVal = pressData[i];
+    if (maxPressVal < pressData[i]) maxPressVal = pressData[i];
   }
 
   WiFiClient client = server.available();               // Получаем данные, посылаемые клиентом
