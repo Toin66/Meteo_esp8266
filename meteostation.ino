@@ -4,7 +4,7 @@
 
 #define pressAdd 650 //добавление к значению давления
 #define getDataInt 10000 //интервал опроса датчиков
-#define writeDataInt 1800000 //10000 - 10 sec 1800000 - 30min
+#define writeDataInt 3600000 //10000 - 10 sec 1800000 - 30min 3600000-1hour
 #define fwVersion "v. 0.0.0.1"
 
 Adafruit_BMP280 bmp;               // Установка связи по интерфейсу I2C
@@ -15,10 +15,21 @@ String header;
 
 unsigned long getDataTime; // переменная таймера для опроса датчика
 unsigned long writeDataTime; // переменная таймера для записи таймера
-byte tempData[16] = {0}; //журнал температуры
-byte pressData[16] = {0}; //журнал давления
+byte tempData[24] = {0}; //журнал температуры
+byte pressData[24] = {0}; //журнал давления
 
 void makeWeb() {
+  byte minTempVal = tempData[23];
+  byte maxTempVal = tempData[23];
+  byte minPressVal =  pressData[23];
+  byte maxPressVal =  pressData[23];
+  for (byte i = 0; i < 24; i++) {
+    if (minTempVal < tempData[i]) minTempVal = tempData[i];
+    if (maxTempVal > tempData[i]) maxTempVal = tempData[i];
+    if (minPressVal < pressData[i]) minPressVal = pressData[i];
+    if (maxPressVal > pressData[i]) maxPressVal = pressData[i];
+  }
+
   WiFiClient client = server.available();               // Получаем данные, посылаемые клиентом
   if (client) {
     Serial.println("New Client.");                      // Отправка "Новый клиент"
@@ -51,23 +62,37 @@ void makeWeb() {
             client.println("</style></head><body><h1>Метеостанция на bmp280 и ESP8266</h1>");
             client.println("<table><tr><th>Параметр</th><th>Показания</th></tr>");
             client.println("<tr><td>Температура</td><td><span class=\"sensor\">");
-            client.println(round(bmp.readTemperature()));
+            client.println(round(bmp.readTemperature()), 0);
             client.println(" *C</span></td></tr>");
             client.println("<tr><td>Давление</td><td><span class=\"sensor\">");
-            client.println(round((bmp.readPressure() / 100.0F ) * 0.75));
+            client.println(round((bmp.readPressure() / 100.0F ) * 0.75), 0);
+            client.println(" mm.Hg.</span></td></tr>");
+            client.println("<tr><td>MinTemp</td><td><span class=\"sensor\">");
+            client.println(minTempVal);
+            client.println(" *C</span></td></tr>");
+            client.println("<tr><td>MaxTemp</td><td><span class=\"sensor\">");
+            client.println(maxTempVal);
+            client.println(" *C</span></td></tr>");
+
+            client.println("<tr><td>MinPress</td><td><span class=\"sensor\">");
+            client.println(minPressVal + pressAdd);
+            client.println(" mm.Hg.</span></td></tr>");
+            client.println("<tr><td>MaxPress</td><td><span class=\"sensor\">");
+            client.println(maxPressVal + pressAdd);
             client.println(" mm.Hg.</span></td></tr>");
 
+            client.println("</table><table>");
             client.println("<tr><td>Статистика температуры</td></tr>");
 
             client.println("<tr>");
-            for (byte i = 0; i < 16; i++) {
+            for (byte i = 0; i < 24; i++) {
               client.println("<td><span class=\"sensor\">");
               if (tempData[i] != 0) {
                 client.println(tempData[i]);
                 client.println(" *C</span></td>");
               }
               else {
-                client.println("N\A");
+                client.println("N/A");
                 client.println("</span></td>");
               }
             }
@@ -76,19 +101,19 @@ void makeWeb() {
             client.println("<tr><td>Статистика давления</td></tr>");
 
             client.println("<tr>");
-            for (byte i = 0; i < 16; i++) {
+            for (byte i = 0; i < 24; i++) {
               client.println("<td><span class=\"sensor\">");
               if (pressData[i] != 0) {
                 client.println(pressData[i] + pressAdd);
                 client.println(" mm.Hg.</span></td>");
               }
               else {
-                client.println("N\A");
+                client.println("N/A");
                 client.println("</span></td>");
               }
             }
 
-            client.println("</tr>");
+            client.println("</tr></table>");
             client.println("</body></html>");
             client.println();
             break;
@@ -109,16 +134,16 @@ void makeWeb() {
 
 void getMeteoData() {
 
-  if ((millis() - writeDataTime > writeDataInt) || tempData[15] == 0) {
+  if ((millis() - writeDataTime > writeDataInt) || tempData[23] == 0) {
     writeDataTime = millis();
-    for (byte i = 0; i < 16; i++) {
-      if (i != 15) {
+    for (byte i = 0; i < 24; i++) {
+      if (i != 23) {
         tempData[i] = tempData[i + 1];
         pressData[i] = pressData[i + 1];
       }
-      if (i == 15) {
-        tempData[15] = round(bmp.readTemperature());
-        pressData[15] =  round((bmp.readPressure() / 100.0F ) * 0.75) - pressAdd;
+      if (i == 23) {
+        tempData[23] = round(bmp.readTemperature());
+        pressData[23] =  round((bmp.readPressure() / 100.0F ) * 0.75) - pressAdd;
       }
     }
   }
