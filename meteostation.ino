@@ -20,13 +20,14 @@ byte pressData[24] = {0}; //журнал давления
 
 void makeWeb() {
   byte minTempVal = tempData[23];
-  byte maxTempVal = tempData[23];
-  byte minPressVal =  pressData[23];
-  byte maxPressVal =  pressData[23];
+  byte maxTempVal = 0;
+  byte minPressVal = pressData[23];
+  byte maxPressVal =  0;
+
   for (byte i = 0; i < 24; i++) {
-    if (minTempVal > tempData[i]) minTempVal = tempData[i];
+    if ((minTempVal > tempData[i]) & (tempData[i] != 0)) minTempVal = tempData[i];
     if (maxTempVal < tempData[i]) maxTempVal = tempData[i];
-    if (minPressVal > pressData[i]) minPressVal = pressData[i];
+    if ((minPressVal > pressData[i]) & (pressData[i] != 0)) minPressVal = pressData[i];
     if (maxPressVal < pressData[i]) maxPressVal = pressData[i];
   }
 
