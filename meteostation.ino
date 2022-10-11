@@ -7,10 +7,10 @@
 #define writeDataInt 3600000 //10000 - 10 sec 1800000 - 30min 3600000-1hour
 #define fwVersion "v. 0.0.0.1"
 
-Adafruit_BMP280 bmp;               // Установка связи по интерфейсу I2C
-const char* ssid = "anet";          // Название WiFi сети
-const char* password = "myoldkey66";     // Пароль от  WiFi сети
-WiFiServer server(80);                   // порт Web-сервера
+Adafruit_BMP280 bmp;               
+const char* ssid = "anet";          
+const char* password = "myoldkey66";    
+WiFiServer server(80);                  
 String header;
 
 unsigned long getDataTime; // переменная таймера для опроса датчика
@@ -31,26 +31,26 @@ void makeWeb() {
     if (maxPressVal < pressData[i]) maxPressVal = pressData[i];
   }
 
-  WiFiClient client = server.available();               // Получаем данные, посылаемые клиентом
+  WiFiClient client = server.available();              
   if (client) {
-    Serial.println("New Client.");                      // Отправка "Новый клиент"
-    String currentLine = "";                            // Создаем строку для хранения входящих данных от клиента
-    while (client.connected()) {                        // Пока есть соединение с клиентом
-      if (client.available()) {                         // Если клиент активен
-        char c = client.read();                         // Считываем посылаемую информацию в переменную "с"
-        Serial.write(c);                                // Отправка в Serial port
+    Serial.println("New Client.");                      
+    String currentLine = "";                           
+    while (client.connected()) {                        
+      if (client.available()) {                         
+        char c = client.read();                         
+        Serial.write(c);                                
         header += c;
-        if (c == '\n') {                                // Вывод HTML страницы
+        if (c == '\n') {                                
           if (currentLine.length() == 0) {
-            client.println("HTTP/1.1 200 OK");          // Стандартный заголовок HT
+            client.println("HTTP/1.1 200 OK");          
             client.println("Content-type:text/html ");
-            client.println("Connection: close");        // Соединение будет закрыто после завершения ответа
-            client.println("Refresh: 10");              // Автоматическое обновление каждые 10 сек
+            client.println("Connection: close");        
+            client.println("Refresh: 10");              
             client.println();
 
-            client.println("<!DOCTYPE html><html>");    // Веб-страница создается с использованием HTML
+            client.println("<!DOCTYPE html><html>");    
             client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-            client.println("<meta charset='UTF-8'>");   // Делаем русскую кодировку
+            client.println("<meta charset='UTF-8'>");   
             client.println("<link rel=\"icon\" href=\"data:,\">");
 
             client.println("<style>body { text-align: center; font-family: \"Trebuchet MS\", Arial;}");
@@ -153,24 +153,24 @@ void getMeteoData() {
 }
 
 void setup() {
-  Serial.begin(115200);                                 // Скорость передачи 115200
+  Serial.begin(115200);                                
   bool status;
-  if (!bmp.begin(0x76)) {                               // Проверка инициализации датчика
-    Serial.println("Could not find a valid bmp280 sensor, check wiring!"); // Печать, об ошибки инициализации.
-    while (1);                                          // Зацикливаем
+  if (!bmp.begin(0x76)) {                               
+    Serial.println("Could not find a valid bmp280 sensor, check wiring!"); 
+    while (1);                                          
   }
 
-  Serial.print("Connecting to ");                       // Отправка в Serial port
-  Serial.println(ssid);                                 // Отправка в Serial port
-  WiFi.begin(ssid, password);                           // Подключение к WiFi Сети
-  while (WiFi.status() != WL_CONNECTED) {               // Проверка подключения к WiFi сети
-    delay(500);                                         // Пауза
-    Serial.print(".");                                  // Отправка в Serial port
+  Serial.print("Connecting to ");                       
+  Serial.println(ssid);                                 
+  WiFi.begin(ssid, password);                           
+  while (WiFi.status() != WL_CONNECTED) {               
+    delay(500);                                         
+    Serial.print(".");                                  
   }
-  Serial.println("");                                   // Отправка в Serial port
-  Serial.println("WiFi connected.");                    // Отправка в Serial port
-  Serial.println("IP address: ");                       // Отправка в Serial port
-  Serial.println(WiFi.localIP());                       // Отправка в Serial port
+  Serial.println("");                                   
+  Serial.println("WiFi connected.");                    
+  Serial.println("IP address: ");                       
+  Serial.println(WiFi.localIP());                       
   server.begin();
 
   getDataTime = millis();
